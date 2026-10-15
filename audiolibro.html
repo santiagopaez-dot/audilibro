@@ -1,0 +1,1248 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lector de libros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: two panes — the open book on the left with a player docked under it, the reading companion chat on the right. On phones, one pane at a time. */
+:root{
+  --bg:#eef0f3; --paper:#fbfbfc; --ink:#1c2130; --muted:#626b7d; --line:#dde1e8;
+  --accent:#2c5a86; --accent-ink:#ffffff; --accent-soft:#e3ecf5; --hl:#fde9a6; --hl-ink:#1c2130;
+  --danger:#b3261e; --ok:#2e7d4f;
+  --read:"Literata", Georgia, "Times New Roman", serif;
+  --ui:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1217; --paper:#161a21; --ink:#e4e7ec; --muted:#97a0b0; --line:#272d37;
+  --accent:#8db8e3; --accent-ink:#0f1217; --accent-soft:#1c2837; --hl:#4a3f17; --hl-ink:#f4ead0;
+  --danger:#f2a29b; --ok:#8fd1a8; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1217; --paper:#161a21; --ink:#e4e7ec; --muted:#97a0b0; --line:#272d37;
+  --accent:#8db8e3; --accent-ink:#0f1217; --accent-soft:#1c2837; --hl:#4a3f17; --hl-ink:#f4ead0;
+  --danger:#f2a29b; --ok:#8fd1a8; color-scheme:dark;
+}
+:root[data-theme="sepia"]{
+  --bg:#efe3c8; --paper:#f8f0da; --ink:#3b2f22; --muted:#7a6a53; --line:#e0d1ac;
+  --accent:#8b5e34; --accent-ink:#ffffff; --accent-soft:#ecdcb8; --hl:#e8c468; --hl-ink:#3b2f22;
+  --danger:#b3261e; --ok:#2e7d4f; color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--ui);overflow:hidden}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;padding-top:env(safe-area-inset-top,0px)}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--paper);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.01em}
+.brand svg{color:var(--accent)}
+.booktitle{flex:1;min-width:0;font-family:var(--read);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.booktitle b{color:var(--ink);font-weight:600}
+.tb{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 12px;font-weight:500;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{border-color:transparent;background:transparent}
+.icon{width:18px;height:18px;flex:none}
+select.sel{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 8px;font-size:14px;max-width:200px}
+.views{display:none;gap:4px;background:var(--bg);border-radius:8px;padding:3px}
+.views button{border:0;background:transparent;border-radius:6px;padding:5px 12px;font-weight:600;font-size:14px;color:var(--muted)}
+.views button[aria-pressed="true"]{background:var(--paper);color:var(--ink)}
+
+/* main */
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,400px);min-height:0}
+.reader{display:grid;grid-template-rows:auto 1fr auto;min-height:0;min-width:0}
+.pagehead{display:flex;align-items:center;gap:12px;padding:10px 24px;font-size:13px;color:var(--muted)}
+.pagehead .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pagehead input[type=range]{flex:1;accent-color:var(--accent);min-width:60px}
+.scroll{overflow:auto;padding:8px 16px 40px;min-height:0}
+.page{max-width:40em;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:48px 56px 56px;font-family:var(--read);font-size:var(--fs,19px);line-height:1.7;min-height:60vh;position:relative}
+.page h2.pmark{font:600 11px/1 var(--ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 28px}
+.page p{margin:0 0 1em;text-wrap:pretty}
+.seg{border-radius:3px;cursor:pointer;transition:background .15s}
+.seg:hover{background:var(--accent-soft)}
+.seg.hl-yellow{background:#fde9a6;color:#1c2130}
+.seg.hl-green{background:#bfe6c6;color:#1c2130}
+.seg.hl-blue{background:#bcd8f5;color:#1c2130}
+.seg.hl-pink{background:#f6c6d9;color:#1c2130}
+.seg.now{background:var(--hl);color:var(--hl-ink);box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.pagefoot{display:flex;justify-content:center;font:13px var(--ui);color:var(--muted);margin-top:24px;font-variant-numeric:tabular-nums}
+
+.player{border-top:1px solid var(--line);background:var(--paper);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.pctl{display:flex;align-items:center;gap:6px}
+.round{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center}
+.round:hover{border-color:var(--accent)}
+.round.big{width:52px;height:52px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.round.big .icon{width:24px;height:24px}
+.popts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+.popts label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+#voiceSel{max-width:230px}
+
+/* chat */
+.chat{border-left:1px solid var(--line);background:var(--paper);display:grid;grid-template-rows:auto 1fr auto;min-height:0;min-width:0}
+.chathead{padding:12px 16px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.chathead h2{margin:0;font-size:16px;font-weight:700}
+.chathead .row{display:flex;gap:8px;flex-wrap:wrap}
+.chathead select{flex:1;min-width:0;max-width:none}
+.msgs{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.msg{max-width:92%;padding:10px 13px;border-radius:12px;font-size:14.5px;line-height:1.55;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px;white-space:pre-wrap}
+.msg.bot{align-self:flex-start;background:var(--bg);border-bottom-left-radius:4px}
+.msg.bot p{margin:0 0 .6em}.msg.bot p:last-child{margin:0}
+.msg.bot ul,.msg.bot ol{margin:.2em 0 .6em;padding-left:1.3em}
+.msg.bot code{font-size:.92em;background:var(--paper);padding:1px 4px;border-radius:4px}
+.msg.err{background:transparent;border:1px solid var(--danger);color:var(--ink)}
+.msg .meta{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
+.pref{border:0;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:0 4px;font:inherit;font-weight:600}
+.empty{color:var(--muted);font-size:14px;display:grid;gap:10px}
+.empty p{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 11px;font-size:13px;text-align:left}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.composer{border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;min-width:0;resize:none;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg);max-height:140px;font-size:14.5px}
+.typing{display:inline-flex;gap:3px}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:b 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.25}40%{opacity:1}}
+
+/* floating ask / highlight toolbar */
+#selToolbar{position:fixed;z-index:20;transform:translate(-50%,-110%);display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.hlswatch{width:22px;height:22px;flex:none;border-radius:50%;border:1px solid var(--line);padding:0;display:grid;place-items:center;font-size:11px;line-height:1;color:#1c2130}
+.hlswatch.c-yellow{background:#fde9a6}
+.hlswatch.c-green{background:#bfe6c6}
+.hlswatch.c-blue{background:#bcd8f5}
+.hlswatch.c-pink{background:#f6c6d9}
+.hlswatch.c-none{background:var(--bg);color:var(--ink)}
+/* dialog */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);padding:0;width:min(560px,calc(100% - 32px));max-height:calc(100% - 32px)}
+dialog::backdrop{background:rgba(10,14,20,.45)}
+.dlg{padding:20px 22px;display:grid;gap:16px}
+.dlg h3{margin:0;font-size:18px}
+.dlg .hint{font-size:13px;color:var(--muted);margin:0}
+fieldset{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:0;display:grid;gap:8px}
+legend{font-weight:600;padding:0 6px;font-size:14px}
+.field{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.field input,.field select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--ink);font-size:14px;width:100%}
+.radios{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:14px}
+a{color:var(--accent)}
+.dlgfoot{display:flex;justify-content:flex-end;gap:8px}
+.libcard{display:flex;flex-direction:column;gap:6px;text-align:left;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--bg);width:100%}
+.libcard:hover{border-color:var(--accent)}
+.libcard .lt{font-weight:600;font-size:14.5px}
+.libcard .lm{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.libbar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.libbar i{display:block;height:100%;background:var(--accent)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;z-index:40;max-width:calc(100% - 32px)}
+.overlay{position:fixed;inset:0;background:rgba(10,14,20,.5);display:grid;place-items:center;z-index:30}
+.overlay div{background:var(--paper);padding:20px 26px;border-radius:12px;font-weight:500}
+.drop{outline:3px dashed var(--accent);outline-offset:-10px}
+
+@media (max-width: 900px){
+  .main{grid-template-columns:1fr}
+  .views{display:flex}
+  body[data-view="book"] .chat{display:none}
+  body[data-view="chat"] .reader{display:none}
+  .chat{border-left:0}
+  .page{padding:28px 20px 36px;font-size:var(--fs,18px)}
+  .scroll{padding:8px 8px 24px}
+  .pagehead{padding:8px 12px}
+  .booktitle{order:3;flex-basis:100%}
+  .hide-sm{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body data-view="book">
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5c3-1.5 6.5-1.5 10 1v14c-3.5-2.5-7-2.5-10-1z"/><path d="M22 5c-3-1.5-6.5-1.5-10 1v14c3.5-2.5 7-2.5 10-1z"/></svg>
+      Lector
+    </div>
+    <div class="booktitle" id="bookTitle">—</div>
+    <div class="tb">
+      <div class="views" role="group" aria-label="Vista">
+        <button id="vBook" aria-pressed="true">Libro</button>
+        <button id="vChat" aria-pressed="false">Chat</button>
+      </div>
+      <select class="sel hide-sm" id="libSel" aria-label="Libros recientes"></select>
+      <button class="btn" id="libBtn" aria-label="Mi biblioteca">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/></svg>
+        <span class="hide-sm">Biblioteca</span>
+      </button>
+      <label class="btn primary" for="fileIn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+        Abrir libro
+      </label>
+      <input type="file" id="fileIn" accept=".pdf,.epub,.docx,.txt,.md,.html,.htm" hidden>
+      <button class="btn ghost" id="setBtn" aria-label="Ajustes">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="hide-sm">Ajustes</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="reader" aria-label="Libro">
+      <div class="pagehead">
+        <span class="num" id="pageNum">Página 1 de 1</span>
+        <input type="range" id="pageRange" min="1" max="1" value="1" aria-label="Ir a la página">
+        <span class="num" id="pct">0%</span>
+        <span class="num hide-sm" id="timeLeft"></span>
+      </div>
+      <div class="scroll" id="scroll">
+        <article class="page" id="page" aria-live="off"></article>
+      </div>
+      <div class="player">
+        <div class="pctl">
+          <button class="round" id="prevBtn" aria-label="Página anterior" title="Página anterior (←)">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <button class="round" id="backBtn" aria-label="Frase anterior" title="Frase anterior">
+            <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18V6l-8.5 6zm.5-6 8.5 6V6z"/></svg></button>
+          <button class="round big" id="playBtn" aria-label="Reproducir" title="Reproducir / pausa (espacio)">
+            <svg class="icon" id="playIco" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="round" id="fwdBtn" aria-label="Frase siguiente" title="Frase siguiente">
+            <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6zm9-12v12l8.5-6z"/></svg></button>
+          <button class="round" id="nextBtn" aria-label="Página siguiente" title="Página siguiente (→)">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+        </div>
+        <div class="popts">
+          <label>Idioma
+            <select class="sel" id="langSel">
+              <option value="es">Español</option><option value="en">English</option><option value="pt">Português</option>
+              <option value="fr">Français</option><option value="it">Italiano</option><option value="de">Deutsch</option>
+            </select></label>
+          <label>Motor
+            <select class="sel" id="engineSel">
+              <option value="browser">Navegador</option>
+              <option value="kokoro">Kokoro (voz local)</option>
+            </select></label>
+          <label>Voz <select class="sel" id="voiceSel"></select></label>
+          <label id="kokoroVoiceWrap" hidden>Voz Kokoro
+            <select class="sel" id="kokoroVoiceSel">
+              <option value="ef_dora">Dora (femenina)</option>
+              <option value="em_alex">Alex (masculina)</option>
+              <option value="em_santa">Santa (masculina)</option>
+            </select></label>
+          <label>Velocidad
+            <select class="sel" id="rateSel">
+              <option>0.75</option><option>0.9</option><option selected>1</option><option>1.1</option><option>1.25</option><option>1.5</option><option>1.75</option><option>2</option>
+            </select></label>
+        </div>
+      </div>
+    </section>
+
+    <aside class="chat" aria-label="Chat sobre el libro">
+      <div class="chathead">
+        <h2>Preguntale al libro</h2>
+        <div class="row">
+          <select class="sel" id="scopeSel" aria-label="Qué parte del libro puede usar el chat">
+            <option value="read">Hasta donde voy</option>
+            <option value="all">Todo el libro (con spoilers)</option>
+          </select>
+          <select class="sel" id="provSel" aria-label="Inteligencia artificial"></select>
+        </div>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <form class="composer" id="chatForm">
+        <textarea id="chatIn" rows="1" placeholder="¿Qué pasó hasta ahora? ¿Qué significa…?"></textarea>
+        <button class="round big" type="button" id="sendBtn" aria-label="Enviar" style="width:42px;height:42px">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
+    </aside>
+  </div>
+</div>
+
+<div id="selToolbar" class="seltoolbar" hidden>
+  <button type="button" class="hlswatch c-yellow" data-color="yellow" title="Resaltar amarillo"></button>
+  <button type="button" class="hlswatch c-green" data-color="green" title="Resaltar verde"></button>
+  <button type="button" class="hlswatch c-blue" data-color="blue" title="Resaltar azul"></button>
+  <button type="button" class="hlswatch c-pink" data-color="pink" title="Resaltar rosa"></button>
+  <button type="button" class="hlswatch c-none" data-color="none" title="Quitar resaltado">✕</button>
+  <button type="button" class="btn primary" id="askSel">Preguntar sobre esto</button>
+</div>
+
+<dialog id="libDlg">
+  <div class="dlg">
+    <h3>Mi biblioteca</h3>
+    <p class="hint">Tocá un libro para abrirlo y empezar a escuchar donde lo dejaste.</p>
+    <div id="libList" style="display:grid;gap:10px;max-height:60vh;overflow:auto"></div>
+    <div class="dlgfoot">
+      <button type="button" class="btn" id="closeLib">Cerrar</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="setDlg">
+  <div class="dlg" id="setForm">
+    <h3>Ajustes del chat</h3>
+    <p class="hint">Para el chat necesitás una clave de API de al menos un servicio. Las claves se guardan solo en este navegador. Si un servicio se queda sin cuota, el lector puede pasar al siguiente.</p>
+    <div class="field">IA principal
+      <div class="radios" id="provRadios"></div>
+    </div>
+    <div id="provFields" style="display:grid;gap:12px"></div>
+    <label class="chk"><input type="checkbox" id="autoFb"> Si una IA falla o se queda sin cuota, probar automáticamente con otra que tenga clave</label>
+    <label class="field">Cuánto texto mandar como máximo por pregunta
+      <select id="budgetSel">
+        <option value="120000">Poco (~30 mil tokens) · más barato</option>
+        <option value="400000">Normal (~100 mil tokens)</option>
+        <option value="1600000">Mucho (~400 mil tokens) · libros enteros en Gemini</option>
+      </select>
+    </label>
+    <label class="field">Tamaño de letra
+      <select id="fsSel"><option value="16px">Chica</option><option value="19px">Normal</option><option value="22px">Grande</option><option value="25px">Muy grande</option></select>
+    </label>
+    <label class="field">Tema
+      <select id="themeSel"><option value="auto">Automático (según el sistema)</option><option value="light">Claro</option><option value="sepia">Sepia</option><option value="dark">Oscuro</option></select>
+    </label>
+    <fieldset>
+      <legend>Sincronizar entre dispositivos</legend>
+      <p class="hint">Descargá un archivo con tu biblioteca, progreso, resaltados y chat, y cargalo en otro dispositivo para tener lo mismo ahí. Por seguridad, las claves de API no se incluyen — cargalas por separado en cada dispositivo.</p>
+      <div class="dlgfoot" style="justify-content:flex-start">
+        <button type="button" class="btn" id="exportBtn">Exportar progreso</button>
+        <label class="btn" for="importIn">Importar progreso</label>
+        <input type="file" id="importIn" accept=".json" hidden>
+      </div>
+    </fieldset>
+    <div class="dlgfoot">
+      <button type="button" class="btn" id="closeSet">Cerrar</button>
+      <button type="button" class="btn primary" id="saveSet">Guardar</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+function toast(msg, ms=3500){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), ms);
+}
+let overlayEl=null;
+function busy(msg){
+  if(!msg){ overlayEl && overlayEl.remove(); overlayEl=null; return; }
+  if(!overlayEl){ overlayEl=document.createElement('div'); overlayEl.className='overlay'; overlayEl.innerHTML='<div></div>'; document.body.appendChild(overlayEl); }
+  overlayEl.firstChild.textContent = msg;
+}
+const scriptCache = {};
+function loadScript(src){
+  if(!scriptCache[src]) scriptCache[src] = new Promise((res, rej)=>{
+    const s=document.createElement('script'); s.src=src; s.onload=res;
+    s.onerror=()=>rej(new Error('No se pudo descargar una librería. Revisá tu conexión a internet.'));
+    document.head.appendChild(s);
+  });
+  return scriptCache[src];
+}
+const esc = s => s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+
+/* ---------- base de datos local (biblioteca) ---------- */
+const DB = {
+  db:null,
+  open(){
+    if(this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej)=>{
+      let r; try{ r = indexedDB.open('lector-libros', 1); }catch(e){ return rej(e); }
+      r.onupgradeneeded = () => r.result.createObjectStore('books', {keyPath:'id'});
+      r.onsuccess = () => { this.db = r.result; res(this.db); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async tx(mode, fn){
+    const db = await this.open();
+    return new Promise((res, rej)=>{
+      const t = db.transaction('books', mode); const st = t.objectStore('books');
+      const out = fn(st); t.oncomplete = ()=>res(out && out.result); t.onerror = ()=>rej(t.error);
+    });
+  },
+  put(b){ return this.tx('readwrite', st=>st.put(b)).catch(()=>{}); },
+  get(id){ return this.tx('readonly', st=>st.get(id)).catch(()=>null); },
+  all(){ return this.tx('readonly', st=>st.getAll()).catch(()=>[]); }
+};
+
+/* ---------- idioma ---------- */
+const STOP = {
+  es:[' el ',' la ',' de ',' que ',' y ',' los ',' las ',' del ',' por ',' con ',' una ',' se ',' su ',' para ',' como '],
+  en:[' the ',' and ',' of ',' to ',' is ',' that ',' was ',' he ',' she ',' it ',' with ',' his ',' her ',' you '],
+  pt:[' não ',' uma ',' com ',' para ',' os ',' é ',' ele ',' ela ',' mais ',' foi ',' muito ',' também ',' são '],
+  fr:[' le ',' les ',' des ',' est ',' et ',' une ',' pas ',' qui ',' dans ',' il ',' elle ',' pour ',' sur ',' au '],
+  it:[' il ',' che ',' non ',' della ',' gli ',' una ',' sono ',' è ',' per ',' con ',' anche ',' questo '],
+  de:[' der ',' die ',' und ',' das ',' ist ',' nicht ',' ein ',' eine ',' ich ',' sie ',' mit ',' auf ',' zu ']
+};
+function detectLang(text){
+  const t = ' ' + text.slice(0, 20000).toLowerCase().replace(/[^\p{L}\s]/gu,' ').replace(/\s+/g,' ') + ' ';
+  let best='es', bs=-1;
+  for(const [l, ws] of Object.entries(STOP)){
+    let s=0; for(const w of ws){ let i=0; while((i=t.indexOf(w,i))!==-1){ s++; i+=w.length-1; } }
+    if(s>bs){ bs=s; best=l; }
+  }
+  return best;
+}
+
+/* ---------- partir texto ---------- */
+function splitSentences(text, lang){
+  let parts = [];
+  if(window.Intl && Intl.Segmenter){
+    try{ for(const s of new Intl.Segmenter(lang||'es',{granularity:'sentence'}).segment(text)) parts.push(s.segment); }catch(e){ parts=[]; }
+  }
+  if(!parts.length) parts = text.match(/[^.!?…]+(?:[.!?…]+["»”’)\]]*\s*|$)/g) || [text];
+  const out = [];
+  for(let p of parts){
+    p = p.trim(); if(!p) continue;
+    if(p.length <= 240){ out.push(p); continue; }
+    // frases muy largas: cortar en comas/punto y coma para que la voz no se trabe
+    const bits = p.split(/(?<=[,;:])\s+/); let cur='';
+    for(const b of bits){
+      if(cur && (cur.length + b.length) > 200){ out.push(cur); cur=b; } else cur = cur ? cur+' '+b : b;
+    }
+    if(cur) out.push(cur);
+  }
+  return out;
+}
+function paginate(paras, target=1500){
+  const pages=[]; let cur=[], len=0;
+  const push = piece => {
+    if(len + piece.length > target && cur.length){ pages.push(cur); cur=[]; len=0; }
+    cur.push(piece); len += piece.length;
+  };
+  for(const p of paras){
+    if(p.length > target*1.4){
+      let buf='';
+      for(const s of splitSentences(p)){
+        if(buf && buf.length + s.length > target){ push(buf); buf=s; } else buf = buf ? buf+' '+s : s;
+      }
+      if(buf) push(buf);
+    } else push(p);
+  }
+  if(cur.length) pages.push(cur);
+  return pages;
+}
+function blocksFromDoc(doc){
+  const root = doc.body || doc.documentElement;
+  if(!root) return [];
+  root.querySelectorAll('script,style,nav[epub\\:type="toc"]').forEach(e=>e.remove());
+  const SEL='p,h1,h2,h3,h4,h5,h6,li,blockquote,pre,dt,dd,td';
+  const els = [...root.querySelectorAll(SEL)].filter(e=>!e.querySelector(SEL));
+  let out = els.map(e=>e.textContent.replace(/\s+/g,' ').trim()).filter(Boolean);
+  if(!out.length) out = (root.textContent||'').split(/\n\s*\n/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
+  return out;
+}
+
+/* ---------- lectores de formatos ---------- */
+const LIB = {
+  pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  pdfw:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  zip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+  mammoth:'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js'
+};
+async function readPDF(buf){
+  await loadScript(LIB.pdf);
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    try{ const r = await fetch(LIB.pdfw); pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(await r.blob()); }
+    catch(e){ pdfjsLib.GlobalWorkerOptions.workerSrc = LIB.pdfw; }
+  }
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let title = '';
+  try{ const md = await pdf.getMetadata(); title = (md.info && md.info.Title) || ''; }catch(e){}
+  const pages=[]; let chars=0;
+  for(let i=1;i<=pdf.numPages;i++){
+    busy(`Leyendo el PDF… página ${i} de ${pdf.numPages}`);
+    const pg = await pdf.getPage(i); const tc = await pg.getTextContent();
+    const lines=[]; let line='';
+    for(const it of tc.items){ if('str' in it){ line += it.str; if(it.hasEOL){ lines.push(line); line=''; } } }
+    if(line) lines.push(line);
+    const clean = lines.map(l=>l.replace(/\s+/g,' ').trim());
+    const maxLen = Math.max(1, ...clean.map(l=>l.length));
+    const paras=[]; let para='';
+    const flush=()=>{ if(para.trim()) paras.push(para.trim()); para=''; };
+    for(const t of clean){
+      if(!t){ flush(); continue; }
+      if(/^\d{1,4}$/.test(t)) continue; // número de página suelto
+      if(/[a-záéíóúñü]-$/i.test(para)) para = para.slice(0,-1) + t;
+      else para += (para?' ':'') + t;
+      if(/[.!?:»"”)]$/.test(t) && t.length < maxLen*0.8) flush();
+    }
+    flush();
+    chars += paras.join('').length;
+    pages.push(paras.length ? paras : ['(Esta página no tiene texto)']);
+    pg.cleanup && pg.cleanup();
+  }
+  if(chars < pdf.numPages*15) throw new Error('Este PDF parece escaneado (son imágenes de páginas, sin texto). Para leerlo en voz alta primero hay que pasarlo por un OCR.');
+  return {pages, title};
+}
+async function readEPUB(buf){
+  await loadScript(LIB.zip);
+  const zip = await JSZip.loadAsync(buf);
+  const parse = (s, type) => new DOMParser().parseFromString(s, type);
+  const cont = parse(await zip.file('META-INF/container.xml').async('string'), 'application/xml');
+  const opfPath = cont.getElementsByTagName('rootfile')[0].getAttribute('full-path');
+  const base = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')+1) : '';
+  const opf = parse(await zip.file(opfPath).async('string'), 'application/xml');
+  const title = (opf.getElementsByTagNameNS('*','title')[0]||{}).textContent || '';
+  const lang = (opf.getElementsByTagNameNS('*','language')[0]||{}).textContent || '';
+  const man = {};
+  for(const it of opf.getElementsByTagName('item')) man[it.getAttribute('id')] = it.getAttribute('href');
+  const join = (b, h) => { const st=[]; for(const p of (b + decodeURIComponent(h.split('#')[0])).split('/')){ if(p==='..') st.pop(); else if(p && p!=='.') st.push(p); } return st.join('/'); };
+  const pages=[]; const refs=[...opf.getElementsByTagName('itemref')];
+  let n=0;
+  for(const r of refs){
+    n++; busy(`Leyendo el EPUB… capítulo ${n} de ${refs.length}`);
+    const href = man[r.getAttribute('idref')]; if(!href) continue;
+    const f = zip.file(join(base, href)); if(!f) continue;
+    const src = await f.async('string');
+    let doc = parse(src, 'application/xhtml+xml');
+    if(doc.getElementsByTagName('parsererror').length) doc = parse(src, 'text/html');
+    const paras = blocksFromDoc(doc);
+    if(paras.join('').length < 3) continue;
+    pages.push(...paginate(paras));
+  }
+  if(!pages.length) throw new Error('No encontré texto en este EPUB. Puede estar protegido con DRM.');
+  return {pages, title, lang: lang.slice(0,2).toLowerCase()};
+}
+async function readDOCX(buf){
+  await loadScript(LIB.mammoth);
+  const r = await mammoth.extractRawText({arrayBuffer: buf});
+  const paras = r.value.split(/\n+/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
+  if(!paras.length) throw new Error('El documento de Word está vacío.');
+  return {pages: paginate(paras)};
+}
+function decodeText(buf){
+  let t = new TextDecoder('utf-8').decode(buf);
+  if((t.match(/�/g)||[]).length > 3) t = new TextDecoder('windows-1252').decode(buf);
+  return t.replace(/\r\n?/g,'\n');
+}
+function readTXT(buf){
+  const t = decodeText(buf);
+  const paras = /\n[ \t]*\n/.test(t)
+    ? t.split(/\n[ \t]*\n/).map(p=>p.replace(/\s+/g,' ').trim())
+    : t.split('\n').map(p=>p.trim());
+  return {pages: paginate(paras.filter(Boolean))};
+}
+function readHTML(buf){
+  const doc = new DOMParser().parseFromString(decodeText(buf), 'text/html');
+  return {pages: paginate(blocksFromDoc(doc)), title: doc.title};
+}
+
+/* ---------- estado ---------- */
+let book = null;           // {id,title,lang,pages:[[parrafo]], ...}
+let pos = {page:0, seg:0};
+let segs = [];             // frases de la página actual
+let playing = false, token = 0, wakeLock = null;
+let settings = Object.assign({
+  provider:'gemini', keys:{}, models:{}, autoFallback:true, budget:400000, fontSize:'19px', rate:1, voices:{},
+  engine:'browser', kokoroVoice:'em_santa', kokoroUrl:'http://localhost:5005', theme:'auto'
+}, LS.get('lector.settings', {}));
+function applyTheme(){
+  const t = settings.theme || 'auto';
+  if(t==='auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+}
+const saveSettings = () => LS.set('lector.settings', settings);
+
+const PROVIDERS = {
+  gemini:{name:'Gemini', model:'gemini-2.5-flash', url:'https://aistudio.google.com/apikey', note:'Google da una clave gratis con un límite diario.'},
+  openai:{name:'ChatGPT (OpenAI)', model:'gpt-4.1-mini', url:'https://platform.openai.com/api-keys', note:'Se paga por uso; no sirve la suscripción ChatGPT Plus.'},
+  claude:{name:'Claude', model:'claude-haiku-5-5', url:'https://console.anthropic.com/settings/keys', note:'Se paga por uso; no sirve la suscripción Claude Pro.'}
+};
+const modelOf = p => (settings.models[p] || '').trim() || PROVIDERS[p].model;
+
+/* ---------- libro de ejemplo ---------- */
+const DEMO = {
+  id:'demo', title:'Cómo usar el Lector', lang:'es', format:'demo',
+  pages: paginate([
+    'Bienvenido al Lector. Esta es una página de ejemplo para que pruebes la voz antes de abrir tu propio libro.',
+    'Tocá el botón de reproducir y el texto se va a leer en voz alta, resaltando cada frase a medida que avanza. Si querés empezar desde otro lugar, hacé clic sobre cualquier frase y la lectura salta ahí.',
+    'Abajo podés elegir la voz y la velocidad. Las voces marcadas con una estrella suelen ser las más naturales. En Microsoft Edge vas a encontrar voces neuronales muy buenas en español y en inglés; en Chrome, las voces de Google; en el celular, las del propio sistema.',
+    'Para abrir un libro usá el botón Abrir libro, o arrastrá el archivo sobre esta ventana. Funciona con PDF, EPUB, Word (.docx), TXT y HTML. El lector detecta el idioma y elige una voz que corresponda, aunque siempre la podés cambiar.',
+    'Tu avance se guarda solo. Si cerrás la página y volvés más tarde, el libro aparece en la lista de recientes y la lectura sigue desde la última frase que escuchaste.',
+    'A la derecha está el chat. Podés preguntarle qué pasó hasta donde vas, pedir un resumen, consultar quién es un personaje o qué significa una palabra. Si elegís la opción Hasta donde voy, el chat solo conoce las páginas que ya leíste y no te arruina el final.',
+    'También podés seleccionar con el mouse cualquier palabra o frase del libro y tocar Preguntar sobre esto. Es la forma más rápida de buscar una definición o entender por qué el autor escribió algo de esa manera.',
+    'El chat necesita una clave de API de Gemini, ChatGPT o Claude. Configurala en Ajustes. La de Gemini es gratuita: se consigue en pocos minutos en la página de Google AI Studio. Si cargás varias claves y una se queda sin cuota, el lector pasa automáticamente a la siguiente.',
+    'Las respuestas del chat citan páginas, por ejemplo (p. 2). Tocá esa cita para ir directo a esa página del libro.'
+  ], 700)
+};
+
+/* ---------- render de página ---------- */
+const pageEl = $('#page'), scrollEl = $('#scroll');
+function renderPage(){
+  if(!book) return;
+  const N = book.pages.length;
+  pos.page = Math.max(0, Math.min(pos.page, N-1));
+  const paras = book.pages[pos.page];
+  pageEl.innerHTML = '';
+  const mark = document.createElement('h2'); mark.className='pmark';
+  mark.textContent = book.title; pageEl.appendChild(mark);
+  segs = [];
+  const hlPage = (LS.get('lector.hl.'+book.id, {}))[pos.page] || {};
+  for(const para of paras){
+    const p = document.createElement('p');
+    for(const s of splitSentences(para, book.lang)){
+      const idx = segs.length;
+      const sp = document.createElement('span'); sp.className='seg'; sp.textContent = s;
+      if(hlPage[idx]) sp.classList.add('hl-'+hlPage[idx]);
+      sp.dataset.i = idx; segs.push({text:s, el:sp});
+      p.appendChild(sp); p.appendChild(document.createTextNode(' '));
+    }
+    pageEl.appendChild(p);
+  }
+  const foot = document.createElement('div'); foot.className='pagefoot'; foot.textContent = `— ${pos.page+1} —`;
+  pageEl.appendChild(foot);
+  pos.seg = Math.max(0, Math.min(pos.seg, segs.length-1));
+  $('#pageNum').textContent = `Página ${pos.page+1} de ${N}`;
+  const r = $('#pageRange'); r.max = N; r.value = pos.page+1;
+  $('#pct').textContent = Math.round(((pos.page+1)/N)*100) + '%';
+  updateScopeLabel();
+  kokoroCache = {};
+  $('#timeLeft').textContent = estimateRemaining();
+  highlight(playing ? pos.seg : -1);
+}
+function estimateRemaining(){
+  if(!book) return '';
+  const count = t => (t.match(/\S+/g) || []).length;
+  let words = 0;
+  for(let i=pos.seg; i<segs.length; i++) words += count(segs[i].text);
+  for(let p=pos.page+1; p<book.pages.length; p++) words += count(book.pages[p].join(' '));
+  const rate = parseFloat($('#rateSel').value) || 1;
+  const wpm = 155 * rate;
+  const min = Math.max(1, Math.round(words / wpm));
+  if(min < 60) return `~${min} min restantes`;
+  return `~${Math.floor(min/60)} h ${min%60} min restantes`;
+}
+function highlight(i){
+  pageEl.querySelectorAll('.seg.now').forEach(e=>e.classList.remove('now'));
+  const tl = $('#timeLeft'); if(tl) tl.textContent = estimateRemaining();
+  if(i<0 || !segs[i]) return;
+  const el = segs[i].el; el.classList.add('now');
+  const r = el.getBoundingClientRect(), sr = scrollEl.getBoundingClientRect();
+  if(r.top < sr.top + 40 || r.bottom > sr.bottom - 40){
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({block:'center', behavior: reduce ? 'auto' : 'smooth'});
+  }
+}
+function saveProgress(){
+  if(!book) return;
+  book.max = Math.max(book.max||0, pos.page);
+  LS.set('lector.pos.'+book.id, {page:pos.page, seg:pos.seg, max:book.max});
+}
+function goPage(n, keepPlaying){
+  if(!book) return;
+  const wasPlaying = playing;
+  if(!keepPlaying) stopSpeech();
+  pos.page = Math.max(0, Math.min(n, book.pages.length-1)); pos.seg = 0;
+  renderPage(); scrollEl.scrollTop = 0; saveProgress();
+  if(keepPlaying && wasPlaying) speak(0);
+}
+
+/* ---------- voz ---------- */
+const synth = window.speechSynthesis;
+let voices = [];
+const NATURAL = /natural|neural|online|premium|enhanced|google|siri|wavenet/i;
+function loadVoices(){
+  if(!synth) return;
+  voices = synth.getVoices();
+  fillVoiceSel();
+}
+function voicesFor(lang){ return voices.filter(v => (v.lang||'').toLowerCase().replace('_','-').startsWith(lang)); }
+function pickVoice(lang){
+  const saved = settings.voices[lang];
+  const list = voicesFor(lang);
+  return list.find(v=>v.voiceURI===saved) || list.find(v=>NATURAL.test(v.name)) || list.find(v=>v.default) || list[0] || null;
+}
+function fillVoiceSel(){
+  const sel = $('#voiceSel'); const lang = book ? book.lang : 'es';
+  sel.innerHTML = '';
+  if(!synth){ sel.innerHTML = '<option>Tu navegador no tiene voces</option>'; return; }
+  const mine = voicesFor(lang).sort((a,b)=> (NATURAL.test(b.name)-NATURAL.test(a.name)) || a.name.localeCompare(b.name));
+  const other = voices.filter(v=>!mine.includes(v)).sort((a,b)=>a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name));
+  const add = (grp, v) => { const o=document.createElement('option'); o.value=v.voiceURI; o.textContent=(NATURAL.test(v.name)?'★ ':'')+v.name.replace(/^Microsoft /,'')+' ('+v.lang+')'; grp.appendChild(o); };
+  if(mine.length){ const g=document.createElement('optgroup'); g.label='Idioma del libro'; mine.forEach(v=>add(g,v)); sel.appendChild(g); }
+  if(other.length){ const g=document.createElement('optgroup'); g.label='Otros idiomas'; other.forEach(v=>add(g,v)); sel.appendChild(g); }
+  if(!voices.length){ sel.innerHTML = '<option>Cargando voces…</option>'; return; }
+  const v = pickVoice(lang); if(v) sel.value = v.voiceURI;
+}
+function currentVoice(){ return voices.find(v=>v.voiceURI===$('#voiceSel').value) || pickVoice(book ? book.lang : 'es'); }
+
+function setPlayIcon(){
+  $('#playIco').innerHTML = playing ? '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+  $('#playBtn').setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir');
+  if('mediaSession' in navigator) try{ navigator.mediaSession.playbackState = playing ? 'playing':'paused'; }catch(e){}
+}
+let kokoroAudio = null, kokoroCache = {};
+function speak(i){
+  if(settings.engine === 'kokoro') return speakKokoro(i);
+  return speakBrowser(i);
+}
+/* Chrome/Android tienen un bug conocido: speechSynthesis se congela en silencio
+   en lecturas largas sin disparar onend. "Despertarlo" con pause/resume lo evita. */
+let synthKeepAlive = null;
+function startKeepAlive(){
+  stopKeepAlive();
+  if(!synth) return;
+  synthKeepAlive = setInterval(()=>{ if(playing && settings.engine!=='kokoro'){ try{ synth.pause(); synth.resume(); }catch(e){} } }, 12000);
+}
+function stopKeepAlive(){ if(synthKeepAlive){ clearInterval(synthKeepAlive); synthKeepAlive=null; } }
+function speakBrowser(i){
+  if(!synth){ toast('Tu navegador no soporta lectura en voz alta. Probá con Chrome, Edge o Safari.'); return; }
+  const my = ++token;
+  synth.cancel();
+  if(i >= segs.length){
+    if(pos.page < book.pages.length-1){ pos.page++; pos.seg=0; renderPage(); saveProgress(); return speak(0); }
+    playing=false; setPlayIcon(); highlight(-1); toast('Terminaste el libro.'); return;
+  }
+  pos.seg = i; playing = true; setPlayIcon(); highlight(i); saveProgress();
+  const u = new SpeechSynthesisUtterance(segs[i].text);
+  const v = currentVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang = book.lang;
+  u.rate = parseFloat($('#rateSel').value) || 1;
+  u.onend = () => { if(my===token && playing) speak(i+1); };
+  u.onerror = e => { if(my!==token) return; if(e.error==='interrupted'||e.error==='canceled') return; if(playing) speak(i+1); };
+  setTimeout(()=>{ if(my===token) synth.speak(u); }, 60);
+}
+/* pide (o reutiliza) el audio de una oración de Kokoro, identificada por página+índice
+   para que no se mezcle con otra página cuando se cambia de lugar */
+function kokoroFetch(page, i){
+  if(page !== pos.page || !segs[i]) return null;
+  const key = page + ':' + i;
+  if(!kokoroCache[key]){
+    const rate = parseFloat($('#rateSel').value) || 1;
+    kokoroCache[key] = fetch((settings.kokoroUrl||'http://localhost:5005') + '/tts', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text: segs[i].text, voice: settings.kokoroVoice || 'em_santa', speed: rate })
+    }).then(res => { if(!res.ok) throw new Error('El servidor local de Kokoro respondió con error.'); return res.blob(); });
+  }
+  return kokoroCache[key];
+}
+async function speakKokoro(i){
+  const my = ++token;
+  if(kokoroAudio){ kokoroAudio.pause(); kokoroAudio = null; }
+  if(i >= segs.length){
+    if(pos.page < book.pages.length-1){ pos.page++; pos.seg=0; renderPage(); saveProgress(); return speak(0); }
+    playing=false; setPlayIcon(); highlight(-1); toast('Terminaste el libro.'); return;
+  }
+  pos.seg = i; playing = true; setPlayIcon(); highlight(i); saveProgress();
+  try{
+    const blob = await kokoroFetch(pos.page, i);
+    if(my!==token) return;
+    if(!blob) throw new Error('No se pudo generar el audio.');
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    kokoroAudio = audio;
+    audio.onended = () => { URL.revokeObjectURL(url); if(my===token && playing) speak(i+1); };
+    audio.onerror = () => { URL.revokeObjectURL(url); if(my===token && playing) speak(i+1); };
+    audio.play();
+    kokoroFetch(pos.page, i+1); // precarga la próxima oración en paralelo, para que no haya silencio entre frases
+  }catch(e){
+    if(my!==token) return;
+    console.error(e);
+    toast('No me pude conectar con el servidor local de Kokoro en ' + (settings.kokoroUrl||'http://localhost:5005') + '. ¿Está corriendo "python server.py" en tu PC?', 6000);
+    playing=false; setPlayIcon();
+  }
+}
+function stopSpeech(){ playing=false; token++; synth && synth.cancel(); if(kokoroAudio){ kokoroAudio.pause(); kokoroAudio=null; } stopKeepAlive(); setPlayIcon(); releaseWake(); }
+async function togglePlay(){
+  if(playing){ stopSpeech(); highlight(pos.seg); return; }
+  try{ if(navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+  startKeepAlive();
+  speak(pos.seg);
+}
+function releaseWake(){ try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock=null; }
+
+/* ---------- abrir libros ---------- */
+async function openFile(file){
+  const ext = (file.name.split('.').pop()||'').toLowerCase();
+  const id = file.name + '|' + file.size;
+  stopSpeech();
+  busy('Abriendo el libro…');
+  try{
+    const buf = await file.arrayBuffer();
+    let r;
+    if(ext==='pdf') r = await readPDF(buf);
+    else if(ext==='epub') r = await readEPUB(buf);
+    else if(ext==='docx') r = await readDOCX(buf);
+    else if(ext==='doc') throw new Error('Los .doc viejos no se pueden leer. Abrilo en Word y guardalo como .docx.');
+    else if(ext==='html'||ext==='htm') r = readHTML(buf);
+    else r = readTXT(buf);
+    if(!r.pages.length) throw new Error('No encontré texto en el archivo.');
+    const sample = r.pages.slice(0, 15).flat().join(' ');
+    const fileTitle = file.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ');
+    const nb = { id, title: (r.title && r.title.trim().length>2 ? r.title.trim() : fileTitle),
+      lang: STOP[r.lang] ? r.lang : detectLang(sample), pages: r.pages, format: ext, opened: Date.now() };
+    await DB.put(nb);
+    await setBook(nb, true);
+    toast(`Listo: ${nb.pages.length} páginas. Idioma detectado: ${$('#langSel').querySelector(`[value="${nb.lang}"]`).textContent}.`);
+  }catch(e){
+    console.error(e); toast(e.message || 'No se pudo abrir el archivo.', 6000);
+  }finally{ busy(null); }
+}
+async function setBook(b, fresh){
+  stopSpeech();
+  book = b; book.norm = null;
+  const p = LS.get('lector.pos.'+b.id, null);
+  pos = p ? {page:p.page, seg:p.seg} : {page:0, seg:0};
+  book.max = p ? (p.max||p.page) : 0;
+  $('#bookTitle').innerHTML = '<b>'+esc(b.title)+'</b>';
+  document.title = b.title + ' · Lector';
+  $('#langSel').value = b.lang;
+  fillVoiceSel(); renderPage(); scrollEl.scrollTop = 0;
+  if(p && p.seg && segs[p.seg]) segs[p.seg].el.scrollIntoView({block:'center'});
+  LS.set('lector.last', b.id);
+  if(b.id!=='demo'){ b.opened = Date.now(); DB.put(stripBook(b)); }
+  loadChat(); refreshLibrary();
+  if('mediaSession' in navigator) try{ navigator.mediaSession.metadata = new MediaMetadata({title:b.title, artist:'Lector'}); }catch(e){}
+}
+const stripBook = b => ({id:b.id,title:b.title,lang:b.lang,pages:b.pages,format:b.format,opened:b.opened});
+async function refreshLibrary(){
+  const all = (await DB.all()) || [];
+  all.sort((a,b)=>(b.opened||0)-(a.opened||0));
+  const sel = $('#libSel'); sel.innerHTML = '';
+  const o0 = document.createElement('option'); o0.value=''; o0.textContent = all.length ? 'Libros recientes' : 'Sin libros guardados'; sel.appendChild(o0);
+  for(const b of [...all, DEMO]){
+    const o=document.createElement('option'); o.value=b.id;
+    const pp = LS.get('lector.pos.'+b.id, null);
+    o.textContent = b.title.slice(0,40) + (pp ? `  · p. ${pp.page+1}/${b.pages.length}` : '');
+    sel.appendChild(o);
+  }
+  sel.value = '';
+}
+
+/* ---------- chat ---------- */
+let chat = [];   // {role:'user'|'assistant', text, meta, err}
+const msgsEl = $('#msgs');
+function loadChat(){ chat = LS.get('lector.chat.'+(book?book.id:''), []); renderChat(); }
+function saveChat(){ if(book) LS.set('lector.chat.'+book.id, chat.filter(m=>!m.err).slice(-40)); }
+function md(s){
+  const lines = esc(s).split('\n'); let html=''; let list=null;
+  const inline = t => t.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>')
+    .replace(/\((p{1,2}|pág|págs|page|pages)\.?\s*(\d+)([^)]{0,20})\)/gi, (m,a,n,rest)=>`(<button type="button" class="pref" data-page="${n}">${a}. ${n}</button>${rest})`);
+  for(const l of lines){
+    const ul = l.match(/^\s*[-*•]\s+(.*)/), ol = l.match(/^\s*\d+[.)]\s+(.*)/);
+    if(ul||ol){ const t = ul?'ul':'ol'; if(list!==t){ if(list) html+=`</${list}>`; html+=`<${t}>`; list=t; } html+=`<li>${inline((ul||ol)[1])}</li>`; continue; }
+    if(list){ html+=`</${list}>`; list=null; }
+    if(l.trim()==='') continue;
+    const h = l.match(/^#{1,4}\s+(.*)/);
+    html += h ? `<p><b>${inline(h[1])}</b></p>` : `<p>${inline(l)}</p>`;
+  }
+  if(list) html+=`</${list}>`;
+  return html;
+}
+function renderChat(){
+  msgsEl.innerHTML = '';
+  if(!chat.length){
+    const e = document.createElement('div'); e.className='empty';
+    const hasKey = Object.values(settings.keys).some(k=>k && k.trim());
+    e.innerHTML = `<p>Preguntá sobre lo que ya escuchaste: qué pasó, quién es quién, qué significa una palabra o por qué el autor escribió algo así.</p>`
+      + (hasKey ? '' : `<p>Primero configurá una clave de IA. <button type="button" class="chip" id="goSet">Abrir ajustes</button></p>`)
+      + `<div class="chips">${['Resumime lo que pasó hasta acá','¿Quiénes son los personajes principales?','Explicame la página que estoy leyendo','¿Qué temas trata el libro hasta ahora?'].map(q=>`<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>`;
+    msgsEl.appendChild(e);
+    const g = e.querySelector('#goSet'); if(g) g.onclick = openSettings;
+    return;
+  }
+  for(const m of chat) msgsEl.appendChild(msgEl(m));
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+function msgEl(m){
+  const d = document.createElement('div');
+  d.className = 'msg ' + (m.role==='user' ? 'user' : 'bot') + (m.err ? ' err' : '');
+  if(m.role==='user') d.textContent = m.text;
+  else d.innerHTML = (m.pending && !m.text ? '<span class="typing"><i></i><i></i><i></i></span>' : md(m.text)) + (m.meta ? `<span class="meta">${esc(m.meta)}</span>` : '');
+  return d;
+}
+function updateScopeLabel(){
+  const o = $('#scopeSel').options[0];
+  if(book) o.textContent = `Hasta donde voy (p. ${pos.page+1})`;
+}
+function fillProvSel(){
+  const sel = $('#provSel'); sel.innerHTML='';
+  for(const [k,p] of Object.entries(PROVIDERS)){
+    const o=document.createElement('option'); o.value=k;
+    o.textContent = p.name + ((settings.keys[k]||'').trim() ? '' : ' (sin clave)');
+    sel.appendChild(o);
+  }
+  sel.value = settings.provider;
+}
+
+/* contexto: texto del libro que se manda a la IA */
+const QSTOP = new Set(norm('para como pero porque cuando donde quien quienes cual cuales esta este esto estos estas tiene tienen sobre entre desde hasta hacia libro pagina paginas que significa dice explicame resumime pasado paso what which when where does have this that from with about book page mean explain').split(' '));
+function buildContext(question, all){
+  const end = all ? book.pages.length-1 : pos.page;
+  const label = i => `[Página ${i+1}]\n` + book.pages[i].join('\n');
+  const texts = []; let total = 0;
+  for(let i=0;i<=end;i++){ const t = label(i); texts.push(t); total += t.length + 2; }
+  const budget = Number(settings.budget) || 400000;
+  if(total <= budget) return {text: texts.join('\n\n'), partial:false};
+  // libro largo: últimas páginas + las más relacionadas con la pregunta
+  if(!book.norm) book.norm = book.pages.map(p=>norm(p.join(' ')));
+  const terms = [...new Set(norm(question).split(/[^a-z0-9ñ]+/).filter(w=>w.length>=4 && !QSTOP.has(w)))];
+  const keep = new Set(); let used = 0;
+  const take = i => { if(keep.has(i) || i<0 || i>end) return false; const l = texts[i].length+2; if(used + l > budget) return false; keep.add(i); used += l; return true; };
+  for(let i=end; i>=Math.max(0,end-7); i--) take(i);
+  take(0);
+  if(terms.length){
+    const scored = [];
+    for(let i=0;i<=end;i++){
+      let s=0; const t = book.norm[i];
+      for(const w of terms){ let k=0; while((k=t.indexOf(w,k))!==-1){ s++; k+=w.length; } }
+      if(s) scored.push([s,i]);
+    }
+    scored.sort((a,b)=>b[0]-a[0]);
+    for(const [,i] of scored){ take(i); take(i+1); if(used > budget*0.97) break; }
+  }
+  // completar con un muestreo parejo del resto, para tener idea general
+  const step = Math.max(1, Math.floor(end/40));
+  for(let i=0;i<=end && used < budget*0.97;i+=step) take(i);
+  const idx = [...keep].sort((a,b)=>a-b); let out=''; let prev=-1;
+  for(const i of idx){ if(prev>=0 && i!==prev+1) out += '\n\n[…páginas omitidas…]'; out += '\n\n' + texts[i]; prev=i; }
+  return {text: out.trim(), partial:true};
+}
+function systemPrompt(ctx, all){
+  const N = book.pages.length, cur = pos.page+1;
+  return `Sos un compañero de lectura y una mini enciclopedia para el libro «${book.title}». El libro tiene ${N} páginas y el lector va por la página ${cur}.
+${all ? 'El lector eligió usar el libro completo, así que podés hablar de cualquier parte, incluido el final.'
+      : `Solo recibís el texto hasta la página ${cur}. No reveles ni adivines nada de lo que ocurre después, tampoco usando lo que sepas de este libro por otras fuentes. Si preguntan por algo posterior, decí amablemente que el lector todavía no llegó a esa parte.`}
+Cómo responder:
+- Respondé siempre en el idioma en que te escribe el usuario, aunque el libro esté en otro idioma.
+- Para preguntas sobre la trama, los personajes o lo que dice el texto, basate en el texto del libro y citá las páginas con el formato (p. 12).
+- Para definiciones de palabras, contexto histórico, referencias culturales, estilo del autor o por qué algo está escrito de cierta manera, podés usar tu conocimiento general; aclarás cuando es una interpretación.
+- Sé claro y directo. Usá listas solo cuando ayuden.
+${ctx.partial
+  ? '- El libro es largo: solo recibís un recorte de páginas (las más relevantes a la pregunta y las más recientes), no el texto íntegro. Empezá tu respuesta aclarando en una frase breve que te basás en un muestreo parcial del libro. Si falta información para responder bien, decilo.\n'
+  : '- Tenés el texto completo disponible hasta donde corresponde, así que no hace falta aclarar nada sobre muestreo parcial.\n'}
+=== TEXTO DEL LIBRO ===
+${ctx.text}
+=== FIN DEL TEXTO ===`;
+}
+function historyFor(){
+  const h = [];
+  for(const m of chat.filter(m=>!m.err && !m.pending && m.text).slice(-12)){
+    const last = h[h.length-1];
+    if(last && last.role===m.role) last.text += '\n\n' + m.text; else h.push({role:m.role, text:m.text});
+  }
+  while(h.length && h[0].role!=='user') h.shift();
+  return h;
+}
+async function readSSE(res, onData){
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
+  for(;;){
+    const {value, done} = await reader.read(); if(done) break;
+    buf += dec.decode(value, {stream:true});
+    let i; while((i = buf.indexOf('\n')) >= 0){
+      const line = buf.slice(0,i).trim(); buf = buf.slice(i+1);
+      if(line.startsWith('data:')){ const d = line.slice(5).trim(); if(d && d!=='[DONE]'){ try{ onData(JSON.parse(d)); }catch(e){} } }
+    }
+  }
+}
+async function callAI(prov, system, hist, onText){
+  const key = (settings.keys[prov]||'').trim(); const model = modelOf(prov);
+  let res;
+  if(prov==='gemini'){
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ systemInstruction:{parts:[{text:system}]},
+        contents: hist.map(m=>({role: m.role==='user'?'user':'model', parts:[{text:m.text}]})) })
+    });
+  } else if(prov==='openai'){
+    res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+key},
+      body: JSON.stringify({ model, stream:true, messages:[{role:'system', content:system}, ...hist.map(m=>({role:m.role, content:m.text}))] })
+    });
+  } else {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({ model, max_tokens:2048, stream:true, system, messages: hist.map(m=>({role:m.role, content:m.text})) })
+    });
+  }
+  if(!res.ok){
+    let detail=''; try{ const j = await res.json(); detail = (j.error && (j.error.message || j.error.type)) || JSON.stringify(j).slice(0,200); }catch(e){}
+    const err = new Error(detail || ('Error ' + res.status)); err.status = res.status; throw err;
+  }
+  let full = '';
+  await readSSE(res, d => {
+    let t = '';
+    if(prov==='gemini') t = ((((d.candidates||[])[0]||{}).content||{}).parts||[]).map(p=>p.text||'').join('');
+    else if(prov==='openai') t = (((d.choices||[])[0]||{}).delta||{}).content || '';
+    else if(d.type==='content_block_delta' && d.delta) t = d.delta.text || '';
+    else if(d.type==='error') { const e = new Error((d.error&&d.error.message)||'Error'); e.status = 500; throw e; }
+    if(t){ full += t; onText(full); }
+  });
+  if(!full) throw Object.assign(new Error('La IA no devolvió respuesta.'), {status:500});
+  return full;
+}
+function explainError(prov, e){
+  const n = PROVIDERS[prov].name, s = e.status;
+  if(s===401 || (s===400 && /api key|API_KEY/i.test(e.message)) || (s===403 && /key|permission/i.test(e.message))) return `La clave de ${n} no es válida. Revisala en Ajustes.`;
+  if(s===429 || /quota|rate|exceed|insufficient/i.test(e.message)) return `${n} se quedó sin cuota o recibió demasiadas preguntas seguidas.`;
+  if(s===404) return `${n} no reconoce el modelo «${modelOf(prov)}». Cambialo en Ajustes.`;
+  if(!s) return `No me pude conectar con ${n}. Revisá tu conexión a internet.`;
+  if(s===400 && /token|context|too long|length/i.test(e.message)) return `El texto es demasiado largo para ${n}. Bajá «Cuánto texto mandar» en Ajustes.`;
+  return `${n} respondió con un error: ${e.message}`;
+}
+let sending = false;
+async function ask(q){
+  q = q.trim(); if(!q || sending || !book) return;
+  const order = [settings.provider, ...Object.keys(PROVIDERS).filter(p=>p!==settings.provider)]
+    .filter(p => (settings.keys[p]||'').trim());
+  if(!order.length){ openSettings(); toast('Cargá al menos una clave de API para usar el chat.'); return; }
+  const all = $('#scopeSel').value === 'all';
+  sending = true;
+  if(innerWidth <= 900) setView('chat');
+  chat.push({role:'user', text:q});
+  const bot = {role:'assistant', text:'', pending:true};
+  const hist = historyFor(); chat.push(bot); renderChat();
+  const botEl = msgsEl.lastChild;
+  const ctx = buildContext(q, all); const sys = systemPrompt(ctx, all);
+  const tries = settings.autoFallback ? order : order.slice(0,1);
+  const notes = [];
+  for(const prov of tries){
+    try{
+      await callAI(prov, sys, hist, t => { bot.text = t; botEl.innerHTML = md(t); msgsEl.scrollTop = msgsEl.scrollHeight; });
+      bot.pending = false;
+      bot.meta = `${PROVIDERS[prov].name} · ${all ? 'libro completo' : 'hasta p. '+(pos.page+1)}${ctx.partial ? ' · fragmentos' : ''}${notes.length ? ' · ' + notes.join(' ') : ''}`;
+      break;
+    }catch(e){
+      console.warn(prov, e);
+      if(bot.text){ bot.pending=false; bot.meta = PROVIDERS[prov].name + ' · respuesta cortada'; break; }
+      notes.push(explainError(prov, e));
+    }
+  }
+  if(bot.pending){ bot.pending=false; bot.err=true; bot.text = notes.join('\n') + (notes.length < Object.keys(PROVIDERS).length ? '\n\nPodés cargar la clave de otra IA en Ajustes y volver a preguntar.' : ''); }
+  sending = false; renderChat(); saveChat();
+}
+
+/* ---------- ajustes ---------- */
+function openSettings(){
+  const radios = $('#provRadios'); radios.innerHTML='';
+  const fields = $('#provFields'); fields.innerHTML='';
+  for(const [k,p] of Object.entries(PROVIDERS)){
+    radios.insertAdjacentHTML('beforeend', `<label><input type="radio" name="prov" value="${k}" ${settings.provider===k?'checked':''}> ${esc(p.name)}</label>`);
+    fields.insertAdjacentHTML('beforeend', `<fieldset><legend>${esc(p.name)}</legend>
+      <p class="hint">${esc(p.note)} <a href="${p.url}" target="_blank" rel="noopener">Conseguir clave</a></p>
+      <label class="field">Clave de API<input type="password" id="key_${k}" autocomplete="off" spellcheck="false" placeholder="Pegá la clave acá" value="${esc(settings.keys[k]||'')}"></label>
+      <label class="field">Modelo<input type="text" id="model_${k}" spellcheck="false" placeholder="${p.model}" value="${esc(settings.models[k]||'')}"></label>
+    </fieldset>`);
+  }
+  $('#autoFb').checked = settings.autoFallback;
+  $('#budgetSel').value = String(settings.budget);
+  $('#fsSel').value = settings.fontSize;
+  $('#themeSel').value = settings.theme || 'auto';
+  const d=$('#setDlg'); try{ d.showModal(); }catch(e){ d.setAttribute('open',''); }
+}
+function closeSettings(){ const d=$('#setDlg'); try{ d.close(); }catch(e){ d.removeAttribute('open'); } }
+async function exportProgress(){
+  const books = (await DB.all()) || [];
+  const data = { exportedAt: Date.now(), lastBook: LS.get('lector.last', null), books: [] };
+  for(const b of books){
+    data.books.push({
+      book: b,
+      pos: LS.get('lector.pos.'+b.id, null),
+      hl: LS.get('lector.hl.'+b.id, null),
+      chat: LS.get('lector.chat.'+b.id, null)
+    });
+  }
+  const s = Object.assign({}, settings); delete s.keys; // no exportar claves de API
+  data.settings = s;
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'lector-respaldo-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  toast('Respaldo descargado. Pasalo al otro dispositivo (por ejemplo con OneDrive) e importalo ahí.');
+}
+async function importProgress(file){
+  try{
+    const data = JSON.parse(await file.text());
+    for(const entry of data.books || []){
+      if(!entry.book || !entry.book.id) continue;
+      await DB.put(entry.book);
+      if(entry.pos) LS.set('lector.pos.'+entry.book.id, entry.pos);
+      if(entry.hl) LS.set('lector.hl.'+entry.book.id, entry.hl);
+      if(entry.chat) LS.set('lector.chat.'+entry.book.id, entry.chat);
+    }
+    if(data.settings) { settings = Object.assign({}, settings, data.settings, {keys: settings.keys}); saveSettings(); }
+    if(data.lastBook) LS.set('lector.last', data.lastBook);
+    await refreshLibrary();
+    toast('Progreso importado. Abrí "Biblioteca" para ver tus libros.');
+  }catch(e){ console.error(e); toast('No pude leer ese archivo de respaldo.', 5000); }
+}
+$('#closeSet').addEventListener('click', closeSettings);
+$('#exportBtn').addEventListener('click', exportProgress);
+$('#importIn').addEventListener('change', e => { const f = e.target.files[0]; if(f) importProgress(f); e.target.value=''; });
+$('#saveSet').addEventListener('click', () => {
+  const r = document.querySelector('input[name=prov]:checked'); if(r) settings.provider = r.value;
+  for(const k of Object.keys(PROVIDERS)){ settings.keys[k] = $('#key_'+k).value.trim(); settings.models[k] = $('#model_'+k).value.trim(); }
+  settings.autoFallback = $('#autoFb').checked; settings.budget = Number($('#budgetSel').value);
+  settings.fontSize = $('#fsSel').value; document.documentElement.style.setProperty('--fs', settings.fontSize);
+  settings.theme = $('#themeSel').value; applyTheme();
+  saveSettings(); fillProvSel(); renderChat(); closeSettings(); toast('Ajustes guardados.');
+});
+
+/* ---------- eventos ---------- */
+function setView(v){ document.body.dataset.view = v; $('#vBook').setAttribute('aria-pressed', v==='book'); $('#vChat').setAttribute('aria-pressed', v==='chat'); }
+$('#vBook').onclick = ()=>setView('book'); $('#vChat').onclick = ()=>setView('chat');
+$('#setBtn').onclick = openSettings;
+async function openLibrary(){
+  const all = (await DB.all()) || [];
+  all.sort((a,b)=>(b.opened||0)-(a.opened||0));
+  const list = [...all, DEMO];
+  const el = $('#libList'); el.innerHTML = '';
+  if(!all.length){ el.insertAdjacentHTML('beforeend', '<p class="hint">Todavía no abriste ningún libro propio — los que abras van a aparecer acá, con tu progreso.</p>'); }
+  for(const b of list){
+    const pp = LS.get('lector.pos.'+b.id, null);
+    const pct = pp ? Math.round(((pp.page+1)/b.pages.length)*100) : 0;
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'libcard';
+    btn.innerHTML = `<span class="lt">${esc(b.title)}</span>
+      <span class="lm"><span>${pp ? `Página ${pp.page+1} de ${b.pages.length}` : 'Sin empezar'}</span><span>${pct}%</span></span>
+      <span class="libbar"><i style="width:${pct}%"></i></span>`;
+    btn.onclick = async () => {
+      closeLibrary();
+      await setBook(b.id==='demo' ? DEMO : b);
+      if(innerWidth <= 900) setView('book');
+      if(!playing) togglePlay();
+    };
+    el.appendChild(btn);
+  }
+  const d = $('#libDlg'); try{ d.showModal(); }catch(e){ d.setAttribute('open',''); }
+}
+function closeLibrary(){ const d = $('#libDlg'); try{ d.close(); }catch(e){ d.removeAttribute('open'); } }
+$('#libBtn').onclick = openLibrary;
+$('#closeLib').addEventListener('click', closeLibrary);
+$('#fileIn').onchange = e => { const f = e.target.files[0]; if(f) openFile(f); e.target.value=''; };
+$('#libSel').onchange = async e => {
+  const id = e.target.value; if(!id) return;
+  if(id==='demo') return setBook(DEMO);
+  const b = await DB.get(id); if(b) setBook(b); else toast('No encontré ese libro guardado.');
+};
+$('#playBtn').onclick = togglePlay;
+$('#prevBtn').onclick = ()=>goPage(pos.page-1, true);
+$('#nextBtn').onclick = ()=>goPage(pos.page+1, true);
+$('#backBtn').onclick = ()=>{ if(pos.seg>0){ pos.seg--; playing ? speak(pos.seg) : highlight(pos.seg); } else if(pos.page>0){ goPage(pos.page-1); pos.seg=segs.length-1; highlight(pos.seg); } };
+$('#fwdBtn').onclick = ()=>{ if(pos.seg < segs.length-1){ pos.seg++; playing ? speak(pos.seg) : highlight(pos.seg); } else goPage(pos.page+1, true); };
+$('#pageRange').oninput = e => goPage(Number(e.target.value)-1);
+$('#rateSel').onchange = e => { settings.rate = e.target.value; saveSettings(); kokoroCache = {}; $('#timeLeft').textContent = estimateRemaining(); if(playing) speak(pos.seg); };
+$('#voiceSel').onchange = e => { if(book){ settings.voices[book.lang] = e.target.value; saveSettings(); } if(playing) speak(pos.seg); };
+function updateEngineUI(){
+  const k = settings.engine === 'kokoro';
+  const vlabel = $('#voiceSel').closest('label'); if(vlabel) vlabel.hidden = k;
+  $('#kokoroVoiceWrap').hidden = !k;
+}
+$('#engineSel').onchange = async e => {
+  settings.engine = e.target.value; saveSettings(); updateEngineUI();
+  if(playing) stopSpeech();
+  if(settings.engine==='kokoro'){
+    try{ const r = await fetch((settings.kokoroUrl||'http://localhost:5005')+'/ping'); if(!r.ok) throw 0; toast('Conectado al servidor local de Kokoro.'); }
+    catch(err){ toast('No encuentro el servidor local de Kokoro. Asegurate de tener corriendo "python server.py" en tu PC.', 6000); }
+  }
+};
+$('#kokoroVoiceSel').onchange = e => { settings.kokoroVoice = e.target.value; saveSettings(); kokoroCache = {}; if(playing && settings.engine==='kokoro') speak(pos.seg); };
+$('#langSel').onchange = e => { if(!book) return; book.lang = e.target.value; if(book.id!=='demo') DB.put(stripBook(book)); fillVoiceSel(); renderPage(); if(playing) speak(pos.seg); };
+$('#provSel').onchange = e => { settings.provider = e.target.value; saveSettings(); };
+pageEl.addEventListener('click', e => {
+  const s = e.target.closest('.seg'); if(!s) return;
+  if(String(getSelection()).trim()) return;
+  pos.seg = Number(s.dataset.i);
+  if(playing) speak(pos.seg); else { highlight(pos.seg); saveProgress(); }
+});
+msgsEl.addEventListener('click', e => {
+  const c = e.target.closest('[data-q]'); if(c) return ask(c.dataset.q);
+  const p = e.target.closest('.pref'); if(p){ goPage(Number(p.dataset.page)-1); if(innerWidth<=900) setView('book'); }
+});
+const chatIn = $('#chatIn');
+const grow = () => { chatIn.style.height='auto'; chatIn.style.height = Math.min(chatIn.scrollHeight, 140)+'px'; };
+chatIn.addEventListener('input', grow);
+chatIn.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } });
+function sendChat(){ const q = chatIn.value; chatIn.value=''; grow(); ask(q); }
+$('#sendBtn').addEventListener('click', sendChat);
+$('#chatForm').addEventListener('submit', e => { e.preventDefault(); sendChat(); });
+
+/* seleccionar texto: resaltar o preguntar */
+const selToolbar = $('#selToolbar'); const askBtn = $('#askSel'); let selText = '';
+function checkSel(){
+  const s = getSelection(); const t = String(s).replace(/\s+/g,' ').trim();
+  if(!t || t.length > 600 || !s.rangeCount || !pageEl.contains(s.anchorNode)){ selToolbar.hidden = true; return; }
+  selText = t; const r = s.getRangeAt(0).getBoundingClientRect();
+  selToolbar.style.left = Math.max(110, Math.min(innerWidth-110, r.left + r.width/2)) + 'px';
+  selToolbar.style.top = Math.max(60, r.top) + 'px'; selToolbar.hidden = false;
+}
+document.addEventListener('mouseup', ()=>setTimeout(checkSel, 10));
+document.addEventListener('selectionchange', ()=>{ clearTimeout(checkSel.t); checkSel.t = setTimeout(checkSel, 400); });
+scrollEl.addEventListener('scroll', ()=>{ selToolbar.hidden = true; });
+selToolbar.addEventListener('mousedown', e => e.preventDefault());
+askBtn.onclick = () => {
+  selToolbar.hidden = true;
+  const short = selText.split(' ').length <= 3;
+  chatIn.value = short ? `¿Qué significa «${selText}» en este contexto?` : `Explicame este fragmento: «${selText}»`;
+  grow(); setView('chat'); chatIn.focus(); getSelection().removeAllRanges();
+};
+function applyHighlight(color){
+  const s = getSelection();
+  selToolbar.hidden = true;
+  if(!s.rangeCount || !book) return;
+  const idxs = [];
+  segs.forEach((sg, idx) => { if(s.containsNode(sg.el, true)) idxs.push(idx); });
+  s.removeAllRanges();
+  if(!idxs.length) return;
+  const all = LS.get('lector.hl.'+book.id, {});
+  const pageHl = Object.assign({}, all[pos.page]);
+  for(const idx of idxs){ if(color==='none') delete pageHl[idx]; else pageHl[idx] = color; }
+  all[pos.page] = pageHl;
+  LS.set('lector.hl.'+book.id, all);
+  renderPage();
+}
+selToolbar.querySelectorAll('.hlswatch').forEach(b => b.onclick = () => applyHighlight(b.dataset.color));
+
+/* atajos de teclado */
+document.addEventListener('keydown', e => {
+  if(e.target.closest('input,textarea,select,dialog')) return;
+  if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='ArrowRight') goPage(pos.page+1, true);
+  else if(e.key==='ArrowLeft') goPage(pos.page-1, true);
+});
+/* arrastrar archivos */
+['dragenter','dragover'].forEach(t=>document.addEventListener(t, e=>{ e.preventDefault(); document.body.classList.add('drop'); }));
+['dragleave','drop'].forEach(t=>document.addEventListener(t, e=>{ e.preventDefault(); if(t==='drop' || !e.relatedTarget) document.body.classList.remove('drop'); }));
+document.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) openFile(f); });
+/* auriculares / controles del sistema */
+if('mediaSession' in navigator){
+  try{
+    navigator.mediaSession.setActionHandler('play', ()=>{ if(!playing) togglePlay(); });
+    navigator.mediaSession.setActionHandler('pause', ()=>{ if(playing) togglePlay(); });
+    navigator.mediaSession.setActionHandler('nexttrack', ()=>goPage(pos.page+1, true));
+    navigator.mediaSession.setActionHandler('previoustrack', ()=>goPage(pos.page-1, true));
+  }catch(e){}
+}
+addEventListener('beforeunload', ()=>{ synth && synth.cancel(); });
+
+/* ---------- inicio ---------- */
+(async function init(){
+  document.documentElement.style.setProperty('--fs', settings.fontSize);
+  applyTheme();
+  $('#rateSel').value = String(settings.rate);
+  if(!$('#rateSel').value) $('#rateSel').value = '1';
+  $('#engineSel').value = settings.engine || 'browser';
+  $('#kokoroVoiceSel').value = settings.kokoroVoice || 'em_santa';
+  updateEngineUI();
+  fillProvSel();
+  if(synth){ loadVoices(); synth.addEventListener ? synth.addEventListener('voiceschanged', loadVoices) : (synth.onvoiceschanged = loadVoices); }
+  const lastId = LS.get('lector.last', null);
+  let b = null;
+  if(lastId && lastId!=='demo') b = await DB.get(lastId);
+  await setBook(b || DEMO);
+})();
+</script>
+</body>
+</html>
