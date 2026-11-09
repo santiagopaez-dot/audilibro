@@ -143,10 +143,61 @@ a{color:var(--accent)}
 .libcard .lm{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
 .libbar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
 .libbar i{display:block;height:100%;background:var(--accent)}
-.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;z-index:40;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;max-width:calc(100% - 32px)}
 .overlay{position:fixed;inset:0;background:rgba(10,14,20,.5);display:grid;place-items:center;z-index:30}
 .overlay div{background:var(--paper);padding:20px 26px;border-radius:12px;font-weight:500}
 .drop{outline:3px dashed var(--accent);outline-offset:-10px}
+
+/* modo escenario: pantalla completa estilo karaoke, solo el texto que se lee */
+.stage{position:fixed;inset:0;z-index:50;background:#06080d;color:#fff;overflow:hidden;font-family:var(--ui);user-select:none;-webkit-user-select:none}
+.stage-bg{position:absolute;inset:0;transition:opacity .4s}
+.stage-bg svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 50% 46%,rgba(0,0,0,.18),rgba(0,0,0,.62))}
+.stage[data-bg="neutro"] .stage-bg svg{display:none}
+.stage[data-bg="neutro"] .stage-bg{background:radial-gradient(ellipse 90% 80% at 50% 40%,#252a33,#0b0d12 72%)}
+.stage-view{position:absolute;inset:0;overflow:hidden;-webkit-mask-image:linear-gradient(transparent 0,#000 24%,#000 74%,transparent 100%);mask-image:linear-gradient(transparent 0,#000 24%,#000 74%,transparent 100%)}
+.stage-lines{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center;gap:22px;padding:0 24px;transition:transform .6s cubic-bezier(.2,.7,.2,1);will-change:transform}
+.sline{max-width:min(1000px,92vw);text-align:center;font-size:clamp(16px,1.9vw,24px);line-height:1.35;font-weight:500;color:#fff;opacity:.14;cursor:pointer;transition:opacity .45s;text-wrap:balance;text-shadow:0 1px 10px rgba(0,0,0,.5)}
+.sline.d1{opacity:.5}
+.sline.d2{opacity:.3}
+.sline.d3{opacity:.18}
+.sline.cur{opacity:1;font-size:clamp(26px,4.3vw,58px);font-weight:700;line-height:1.14;letter-spacing:-.01em;text-shadow:0 2px 24px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.4)}
+.sline:hover{opacity:.75}.sline.cur:hover{opacity:1}
+.stage-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;gap:16px;padding:calc(18px + env(safe-area-inset-top,0px)) 24px 0;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 8px rgba(0,0,0,.6);transition:opacity .4s}
+.stage-top span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+.stage-top #stagePage{font-variant-numeric:tabular-nums;letter-spacing:.06em;flex:none;opacity:.6}
+.stage-bar{position:absolute;left:0;right:0;bottom:0;padding:40px 20px calc(16px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(0,0,0,.72));transition:opacity .4s}
+.stage-seek{position:relative;padding:10px 0;margin:-10px 0 4px;cursor:pointer;touch-action:none}
+.stage-prog{position:relative;height:4px;border-radius:2px;background:rgba(255,255,255,.22);transition:height .15s}
+.stage-seek:hover .stage-prog,.stage-seek.drag .stage-prog{height:7px}
+.stage-prog i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:inherit}
+#stageProg{background:#e53935;transition:width .4s}
+.stage-seek.drag #stageProg{transition:none}
+#stageHover{background:rgba(255,255,255,.35);opacity:0}
+.stage-seek:hover #stageHover{opacity:1}
+.stage-knob{position:absolute;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;background:#e53935;transform:scale(0);transition:transform .15s;pointer-events:none}
+.stage-seek:hover .stage-knob,.stage-seek.drag .stage-knob{transform:scale(1)}
+.stage-tip{position:absolute;bottom:26px;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;font-size:12.5px;font-weight:600;padding:5px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
+.stage-seek:hover .stage-tip,.stage-seek.drag .stage-tip{opacity:1}
+.stage-ctl{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.stage-ctl .grp{display:flex;align-items:center;gap:8px}
+.sbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.sbtn:hover{background:rgba(255,255,255,.22)}
+.sbtn.big{width:58px;height:58px;background:#fff;color:#111;border-color:#fff}
+.sbtn.big .icon{width:26px;height:26px}
+.sbtn.pill{width:auto;border-radius:999px;padding:0 14px;font-size:13px;font-weight:600;gap:6px;display:inline-flex;align-items:center}
+.stage input[type=range]{width:120px;accent-color:#fff}
+.stage select{height:44px;border-radius:999px;padding:0 12px;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);font-size:14px;font-weight:600}
+.stage select option{color:#111;background:#fff}
+.stage :focus-visible{outline:2px solid #fff;outline-offset:2px}
+.stage.idle{cursor:none}
+.stage.idle .stage-bar,.stage.idle .stage-top{opacity:0;pointer-events:none}
+@media (max-width: 600px){
+  .stage-ctl{justify-content:center}
+  .stage input[type=range]{width:80px}
+  .stage-lines{gap:16px}
+  .sbtn.pill span{display:none}
+}
 
 @media (max-width: 900px){
   .main{grid-template-columns:1fr}
@@ -216,6 +267,8 @@ a{color:var(--accent)}
             <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6zm9-12v12l8.5-6z"/></svg></button>
           <button class="round" id="nextBtn" aria-label="Página siguiente" title="Página siguiente (→)">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+          <button class="round" id="stageBtn" aria-label="Pantalla completa" title="Pantalla completa (F)">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
         <div class="popts">
           <label>Idioma
@@ -272,6 +325,64 @@ a{color:var(--accent)}
   <button type="button" class="hlswatch c-pink" data-color="pink" title="Resaltar rosa"></button>
   <button type="button" class="hlswatch c-none" data-color="none" title="Quitar resaltado">✕</button>
   <button type="button" class="btn primary" id="askSel">Preguntar sobre esto</button>
+</div>
+
+<div id="stage" class="stage" data-bg="paisaje" role="region" aria-label="Lectura a pantalla completa" hidden>
+  <div class="stage-bg" aria-hidden="true">
+    <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#070a1a"/><stop offset=".45" stop-color="#151b3c"/><stop offset=".78" stop-color="#3a2f55"/><stop offset="1" stop-color="#6b4560"/>
+        </linearGradient>
+        <radialGradient id="moonG" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#fff6e0" stop-opacity=".55"/><stop offset="1" stop-color="#fff6e0" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="lakeG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2a2547"/><stop offset="1" stop-color="#05060c"/>
+        </linearGradient>
+      </defs>
+      <rect width="1600" height="900" fill="url(#skyG)"/>
+      <g id="stars" fill="#fff"></g>
+      <circle cx="1180" cy="210" r="140" fill="url(#moonG)"/>
+      <circle cx="1180" cy="210" r="38" fill="#f4ecd6" opacity=".9"/>
+      <path d="M0 560 L120 470 L230 520 L360 400 L470 480 L560 430 L700 520 L820 380 L960 500 L1080 440 L1200 520 L1330 410 L1460 490 L1600 430 V900 H0Z" fill="#2a2a4a" opacity=".85"/>
+      <path d="M0 640 L150 540 L280 600 L420 520 L560 610 L690 540 L840 630 L980 550 L1120 620 L1260 560 L1420 640 L1600 570 V900 H0Z" fill="#1b1b34"/>
+      <rect y="690" width="1600" height="210" fill="url(#lakeG)"/>
+      <path d="M0 720 C200 700 330 735 520 712 C700 690 820 740 1000 716 C1180 694 1330 735 1600 706 V900 H0Z" fill="#0d0e1c"/>
+      <path d="M0 800 C260 770 420 820 650 792 C880 764 1060 822 1300 790 C1430 774 1520 800 1600 788 V900 H0Z" fill="#05060d"/>
+      <rect x="1166" y="700" width="28" height="90" fill="#f4ecd6" opacity=".08"/>
+    </svg>
+  </div>
+  <div class="stage-top"><span id="stageTitle"></span><span id="stagePage"></span></div>
+  <div class="stage-view" id="stageView"><div class="stage-lines" id="stageLines"></div></div>
+  <div class="stage-bar">
+    <div class="stage-seek" id="stageSeek" role="slider" tabindex="0" aria-label="Posición en el libro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="stage-prog"><i id="stageHover"></i><i id="stageProg"></i></div>
+      <span class="stage-knob" id="stageKnob"></span>
+      <span class="stage-tip" id="stageTip"></span>
+    </div>
+    <div class="stage-ctl">
+      <div class="grp">
+        <button type="button" class="sbtn" id="sBack" aria-label="Frase anterior" title="Frase anterior">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18V6l-8.5 6zm.5-6 8.5 6V6z"/></svg></button>
+        <button type="button" class="sbtn big" id="sPlay" aria-label="Reproducir" title="Reproducir / pausa (espacio)">
+          <svg class="icon" id="sPlayIco" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button type="button" class="sbtn" id="sFwd" aria-label="Frase siguiente" title="Frase siguiente">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6zm9-12v12l8.5-6z"/></svg></button>
+      </div>
+      <div class="grp">
+        <button type="button" class="sbtn" id="sMute" aria-label="Silenciar" title="Volumen">
+          <svg class="icon" id="sVolIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg></button>
+        <input type="range" id="sVol" min="0" max="1" step="0.05" aria-label="Volumen">
+        <select id="sRate" aria-label="Velocidad" title="Velocidad"></select>
+        <button type="button" class="sbtn pill" id="sBg" title="Cambiar fondo">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19l6-8 4 5 3-3 5 6z"/><circle cx="16" cy="7" r="2"/></svg>
+          <span id="sBgLabel">Fondo</span></button>
+        <button type="button" class="sbtn" id="sExit" aria-label="Salir de pantalla completa" title="Minimizar (Esc)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <dialog id="libDlg">
@@ -404,8 +515,10 @@ function splitSentences(text, lang){
   }
   if(!parts.length) parts = text.match(/[^.!?…]+(?:[.!?…]+["»”’)\]]*\s*|$)/g) || [text];
   const out = [];
+  const ABBR = /(?:^|[\s(])(?:p|pp|pág|págs|sr|sra|srta|dr|dra|lic|ing|ej|vol|cap|art|núm|nº|etc|aprox|fig|cf|vs)\.$/i;
   for(let p of parts){
     p = p.trim(); if(!p) continue;
+    if(out.length && ABBR.test(out[out.length-1])){ out[out.length-1] += ' ' + p; continue; }
     if(p.length <= 240){ out.push(p); continue; }
     // frases muy largas: cortar en comas/punto y coma para que la voz no se trabe
     const bits = p.split(/(?<=[,;:])\s+/); let cur='';
@@ -547,7 +660,8 @@ let segs = [];             // frases de la página actual
 let playing = false, token = 0, wakeLock = null;
 let settings = Object.assign({
   provider:'gemini', keys:{}, models:{}, autoFallback:true, budget:400000, fontSize:'19px', rate:1, voices:{},
-  engine:'browser', kokoroVoice:'em_santa', kokoroUrl:'http://localhost:5005', theme:'auto'
+  engine:'browser', kokoroVoice:'em_santa', kokoroUrl:'http://localhost:5005', theme:'auto',
+  volume:1, stageBg:'paisaje'
 }, LS.get('lector.settings', {}));
 function applyTheme(){
   const t = settings.theme || 'auto';
@@ -611,6 +725,7 @@ function renderPage(){
   updateScopeLabel();
   kokoroCache = {};
   $('#timeLeft').textContent = estimateRemaining();
+  if(stageOpen) renderStage();
   highlight(playing ? pos.seg : -1);
 }
 function estimateRemaining(){
@@ -628,6 +743,7 @@ function estimateRemaining(){
 function highlight(i){
   pageEl.querySelectorAll('.seg.now').forEach(e=>e.classList.remove('now'));
   const tl = $('#timeLeft'); if(tl) tl.textContent = estimateRemaining();
+  if(stageOpen) stageFocus(i>=0 && segs[i] ? i : pos.seg);
   if(i<0 || !segs[i]) return;
   const el = segs[i].el; el.classList.add('now');
   const r = el.getBoundingClientRect(), sr = scrollEl.getBoundingClientRect();
@@ -682,6 +798,9 @@ function currentVoice(){ return voices.find(v=>v.voiceURI===$('#voiceSel').value
 function setPlayIcon(){
   $('#playIco').innerHTML = playing ? '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
   $('#playBtn').setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir');
+  $('#sPlayIco').innerHTML = $('#playIco').innerHTML;
+  $('#sPlay').setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir');
+  if(stageOpen) stageWake();
   if('mediaSession' in navigator) try{ navigator.mediaSession.playbackState = playing ? 'playing':'paused'; }catch(e){}
 }
 let kokoroAudio = null, kokoroCache = {};
@@ -710,6 +829,7 @@ function speakBrowser(i){
   const u = new SpeechSynthesisUtterance(segs[i].text);
   const v = currentVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang = book.lang;
   u.rate = parseFloat($('#rateSel').value) || 1;
+  u.volume = volumeNow();
   u.onend = () => { if(my===token && playing) speak(i+1); };
   u.onerror = e => { if(my!==token) return; if(e.error==='interrupted'||e.error==='canceled') return; if(playing) speak(i+1); };
   setTimeout(()=>{ if(my===token) synth.speak(u); }, 60);
@@ -742,6 +862,7 @@ async function speakKokoro(i){
     if(!blob) throw new Error('No se pudo generar el audio.');
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.volume = volumeNow();
     kokoroAudio = audio;
     audio.onended = () => { URL.revokeObjectURL(url); if(my===token && playing) speak(i+1); };
     audio.onerror = () => { URL.revokeObjectURL(url); if(my===token && playing) speak(i+1); };
@@ -1133,7 +1254,7 @@ $('#nextBtn').onclick = ()=>goPage(pos.page+1, true);
 $('#backBtn').onclick = ()=>{ if(pos.seg>0){ pos.seg--; playing ? speak(pos.seg) : highlight(pos.seg); } else if(pos.page>0){ goPage(pos.page-1); pos.seg=segs.length-1; highlight(pos.seg); } };
 $('#fwdBtn').onclick = ()=>{ if(pos.seg < segs.length-1){ pos.seg++; playing ? speak(pos.seg) : highlight(pos.seg); } else goPage(pos.page+1, true); };
 $('#pageRange').oninput = e => goPage(Number(e.target.value)-1);
-$('#rateSel').onchange = e => { settings.rate = e.target.value; saveSettings(); kokoroCache = {}; $('#timeLeft').textContent = estimateRemaining(); if(playing) speak(pos.seg); };
+$('#rateSel').onchange = e => { settings.rate = e.target.value; $('#sRate').value = e.target.value; saveSettings(); kokoroCache = {}; $('#timeLeft').textContent = estimateRemaining(); if(playing) speak(pos.seg); };
 $('#voiceSel').onchange = e => { if(book){ settings.voices[book.lang] = e.target.value; saveSettings(); } if(playing) speak(pos.seg); };
 function updateEngineUI(){
   const k = settings.engine === 'kokoro';
@@ -1205,10 +1326,163 @@ function applyHighlight(color){
 }
 selToolbar.querySelectorAll('.hlswatch').forEach(b => b.onclick = () => applyHighlight(b.dataset.color));
 
+/* ---------- pantalla completa (modo escenario) ---------- */
+let stageOpen = false, stageEls = [], stageIdleT = null, stageFs = false, lastVol = 1;
+const stage = $('#stage'), stageLines = $('#stageLines'), stageView = $('#stageView');
+const volumeNow = () => { const v = Number(settings.volume); return isFinite(v) ? Math.max(0, Math.min(1, v)) : 1; };
+(function buildStars(){
+  const g = $('#stars'); let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+  let h = '';
+  for(let k=0; k<110; k++){
+    const x = (rnd()*1600).toFixed(0), y = (rnd()*520).toFixed(0), r = (rnd()*1.3+.3).toFixed(2), o = (rnd()*.6+.2).toFixed(2);
+    h += `<circle cx="${x}" cy="${y}" r="${r}" opacity="${o}"/>`;
+  }
+  g.innerHTML = h;
+})();
+function renderStage(){
+  stageLines.innerHTML = ''; stageEls = [];
+  segs.forEach((sg, idx) => {
+    const d = document.createElement('div'); d.className = 'sline'; d.textContent = sg.text; d.dataset.i = idx;
+    stageLines.appendChild(d); stageEls.push(d);
+  });
+  $('#stageTitle').textContent = book ? book.title : '';
+  $('#stagePage').textContent = book ? `Página ${pos.page+1} de ${book.pages.length}` : '';
+  // al cambiar de página, ubicar sin animación
+  stageLines.style.transition = 'none';
+  stageFocus(pos.seg);
+  void stageLines.offsetHeight;
+  stageLines.style.transition = '';
+}
+function stageFocus(i){
+  if(!stageEls.length) return;
+  i = Math.max(0, Math.min(i, stageEls.length-1));
+  stageEls.forEach((el, k) => {
+    const dd = Math.abs(k - i);
+    el.className = 'sline' + (dd===0 ? ' cur' : dd===1 ? ' d1' : dd===2 ? ' d2' : dd===3 ? ' d3' : '');
+  });
+  const el = stageEls[i];
+  const y = stageView.clientHeight * 0.46 - (el.offsetTop + el.offsetHeight/2);
+  stageLines.style.transform = `translateY(${y}px)`;
+  if(!seekDrag) setSeekUI(bookFrac(pos.page, i, stageEls.length));
+}
+function setVolIcon(){
+  const v = volumeNow();
+  const waves = v === 0 ? '<path d="M22 9l-6 6M16 9l6 6"/>' : v < .5 ? '<path d="M15.5 8.5a5 5 0 0 1 0 7"/>' : '<path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>';
+  $('#sVolIco').innerHTML = '<path d="M11 5L6 9H2v6h4l5 4z" fill="currentColor"/>' + waves;
+  $('#sMute').setAttribute('aria-label', v === 0 ? 'Activar sonido' : 'Silenciar');
+}
+function setVolume(v, final){
+  settings.volume = v; $('#sVol').value = v; setVolIcon();
+  if(kokoroAudio) kokoroAudio.volume = v;
+  if(final){
+    saveSettings();
+    // la voz del navegador toma el volumen al empezar cada frase: reiniciar la actual para que se note ya
+    if(playing && settings.engine !== 'kokoro') speak(pos.seg);
+  }
+}
+function setStageBg(bg){
+  settings.stageBg = bg; stage.dataset.bg = bg;
+  $('#sBgLabel').textContent = bg === 'paisaje' ? 'Paisaje' : 'Neutro';
+}
+function stageWake(){
+  stage.classList.remove('idle');
+  clearTimeout(stageIdleT);
+  stageIdleT = setTimeout(() => {
+    const busyCtl = document.activeElement && /^(SELECT|INPUT)$/.test(document.activeElement.tagName);
+    if(playing && stageOpen && !busyCtl) stage.classList.add('idle');
+  }, 3000);
+}
+async function openStage(){
+  if(!book || stageOpen) return;
+  stageOpen = true; stage.hidden = false;
+  selToolbar.hidden = true;
+  renderStage(); stageWake();
+  stageFs = false;
+  const de = document.documentElement;
+  try{ if(de.requestFullscreen && !document.fullscreenElement){ await de.requestFullscreen({navigationUI:'hide'}); stageFs = true; } }catch(e){}
+  stageFocus(pos.seg);
+  $('#sPlay').focus({preventScroll:true});
+}
+function closeStage(){
+  if(!stageOpen) return;
+  stageOpen = false; stage.hidden = true; stage.classList.remove('idle'); clearTimeout(stageIdleT);
+  if(stageFs && document.fullscreenElement){ try{ document.exitFullscreen(); }catch(e){} }
+  stageFs = false;
+  highlight(playing ? pos.seg : -1);
+}
+document.addEventListener('fullscreenchange', () => { if(!document.fullscreenElement && stageOpen && stageFs){ stageFs = false; closeStage(); } else if(stageOpen) stageFocus(pos.seg); });
+addEventListener('resize', () => { if(stageOpen) stageFocus(pos.seg); });
+['mousemove','touchstart','keydown','click'].forEach(t => stage.addEventListener(t, stageWake, {passive:true}));
+/* barra de progreso del libro: clic o arrastrar para saltar (como YouTube) */
+let seekDrag = false;
+const seekEl = $('#stageSeek');
+function bookFrac(page, seg, nsegs){ const N = book ? book.pages.length : 1; return Math.min(1, (page + (seg+1)/Math.max(1,nsegs)) / N); }
+function setSeekUI(f){
+  const pc = (f*100).toFixed(3) + '%';
+  $('#stageProg').style.width = pc; $('#stageKnob').style.left = pc;
+  seekEl.setAttribute('aria-valuenow', Math.round(f*100));
+}
+function fracToPos(f){
+  const N = book.pages.length; const x = Math.max(0, Math.min(.99999, f)) * N;
+  const page = Math.floor(x);
+  const n = book.pages[page].reduce((a, para) => a + splitSentences(para, book.lang).length, 0) || 1;
+  return {page, seg: Math.min(n-1, Math.floor((x - page) * n))};
+}
+function seekFracAt(e){ const r = seekEl.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); }
+function showTip(f){
+  const p = fracToPos(f);
+  const tip = $('#stageTip'); tip.textContent = `Página ${p.page+1} de ${book.pages.length} · ${Math.round(f*100)}%`;
+  const w = seekEl.clientWidth, tw = tip.offsetWidth/2 + 4;
+  tip.style.left = Math.max(tw, Math.min(w - tw, f*w)) + 'px';
+  $('#stageHover').style.width = (f*100) + '%';
+}
+function seekTo(f){
+  const t = fracToPos(f);
+  const wasPlaying = playing;
+  if(t.page !== pos.page){ stopSpeech(); pos.page = t.page; pos.seg = t.seg; renderPage(); saveProgress(); }
+  else pos.seg = t.seg;
+  if(wasPlaying || playing) speak(pos.seg); else { highlight(pos.seg); saveProgress(); }
+}
+seekEl.addEventListener('pointermove', e => { if(book) showTip(seekFracAt(e)); if(seekDrag) setSeekUI(seekFracAt(e)); });
+seekEl.addEventListener('pointerdown', e => {
+  if(!book) return; seekDrag = true; seekEl.classList.add('drag');
+  try{ seekEl.setPointerCapture(e.pointerId); }catch(err){}
+  const f = seekFracAt(e); setSeekUI(f); showTip(f);
+});
+const endSeek = e => {
+  if(!seekDrag) return; seekDrag = false; seekEl.classList.remove('drag');
+  seekTo(seekFracAt(e)); stageWake();
+};
+seekEl.addEventListener('pointerup', endSeek);
+seekEl.addEventListener('pointercancel', () => { seekDrag = false; seekEl.classList.remove('drag'); stageFocus(pos.seg); });
+seekEl.addEventListener('keydown', e => {
+  if(e.key === 'ArrowLeft'){ e.preventDefault(); e.stopPropagation(); $('#backBtn').click(); }
+  else if(e.key === 'ArrowRight'){ e.preventDefault(); e.stopPropagation(); $('#fwdBtn').click(); }
+});
+
+$('#stageBtn').onclick = openStage;
+$('#sExit').onclick = closeStage;
+$('#sPlay').onclick = togglePlay;
+$('#sBack').onclick = () => $('#backBtn').click();
+$('#sFwd').onclick = () => $('#fwdBtn').click();
+$('#sRate').innerHTML = [...$('#rateSel').options].map(o => `<option value="${o.value}">${o.value}×</option>`).join('');
+$('#sRate').onchange = e => { const r = $('#rateSel'); r.value = e.target.value; r.dispatchEvent(new Event('change')); };
+$('#sVol').addEventListener('input', e => setVolume(Number(e.target.value), false));
+$('#sVol').addEventListener('change', e => setVolume(Number(e.target.value), true));
+$('#sMute').onclick = () => { if(volumeNow() > 0){ lastVol = volumeNow(); setVolume(0, true); } else setVolume(lastVol || 1, true); };
+$('#sBg').onclick = () => { setStageBg(settings.stageBg === 'paisaje' ? 'neutro' : 'paisaje'); saveSettings(); };
+stageLines.addEventListener('click', e => {
+  const l = e.target.closest('.sline'); if(!l) return;
+  pos.seg = Number(l.dataset.i);
+  if(playing) speak(pos.seg); else { highlight(pos.seg); saveProgress(); }
+});
+
 /* atajos de teclado */
 document.addEventListener('keydown', e => {
   if(e.target.closest('input,textarea,select,dialog')) return;
   if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='f' || e.key==='F'){ stageOpen ? closeStage() : openStage(); }
+  else if(e.key==='Escape' && stageOpen){ closeStage(); }
   else if(e.key==='ArrowRight') goPage(pos.page+1, true);
   else if(e.key==='ArrowLeft') goPage(pos.page-1, true);
 });
@@ -1233,6 +1507,8 @@ addEventListener('beforeunload', ()=>{ synth && synth.cancel(); });
   applyTheme();
   $('#rateSel').value = String(settings.rate);
   if(!$('#rateSel').value) $('#rateSel').value = '1';
+  $('#sRate').value = $('#rateSel').value;
+  $('#sVol').value = volumeNow(); setVolIcon(); setStageBg(settings.stageBg === 'neutro' ? 'neutro' : 'paisaje');
   $('#engineSel').value = settings.engine || 'browser';
   $('#kokoroVoiceSel').value = settings.kokoroVoice || 'em_santa';
   updateEngineUI();
